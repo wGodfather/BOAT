@@ -1,7 +1,7 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const {createProviderRuntime}=require('./desktop_catalog_runtime');
-const TYPES=['movie','series','anime','live','tv'];
+const TYPES=['movie','series','anime','tv'];
 function createCatalogAddon(options={}){
     const root=options.root || path.resolve(__dirname,'..');
     const desktop=fs.existsSync(path.join(root,'dist/desktop/catalog-inventory.json'))?path.join(root,'dist/desktop'):path.join(root,'desktop');
@@ -22,7 +22,7 @@ function createCatalogAddon(options={}){
         return [{id,type,name:provider.name,extra:[{name:'search',isRequired:false},{name:'skip',isRequired:false},{name:'genre',isRequired:false,options:choices.map(item=>item.label)}]}];
     }));
     const prefixes=inventory.providers.map(provider=>provider.id+':');
-    const manifest={id:'community.nuvio.bronzecloud.catalogs',version:inventory.version,name:'Nuvio Türkiye Kaynak Katalogları',description:'Cloudstream kaynaklarının kategorileri, araması ve bölüm listeleri',resources:[{name:'catalog',types:TYPES},{name:'meta',types:TYPES,idPrefixes:prefixes},{name:'stream',types:TYPES,idPrefixes:prefixes},{name:'subtitles',types:TYPES,idPrefixes:prefixes}],types:TYPES,idPrefixes:prefixes,catalogs,behaviorHints:{adult:false}};
+    const manifest={id:'community.nuvio.boat.catalogs',version:inventory.version,name:'B.O.A.T Katalogları',description:'B.O.A.T kategorileri, araması ve bölüm listeleri',resources:[{name:'catalog',types:TYPES},{name:'meta',types:TYPES,idPrefixes:prefixes},{name:'stream',types:TYPES,idPrefixes:prefixes},{name:'subtitles',types:TYPES,idPrefixes:prefixes}],types:TYPES,idPrefixes:prefixes,catalogs,behaviorHints:{adult:false}};
     const ownership=new Map(),episodes=new Map();
     function remember(meta,provider){
         if(!meta?.id)return;

@@ -1,6 +1,6 @@
 const fs=require('node:fs');
 const path=require('node:path');
-const PREFIX='settings_https://raw.githubusercontent.com/dr-octagon/nuvio/main/manifest.json:';
+const PREFIX='settings_https://raw.githubusercontent.com/wgodfather/boat/main/manifest.json:';
 function unescape(value){
     return value.replace(/\\(?:u([0-9a-fA-F]{4})|(.))/g,(_,hex,char)=>hex?String.fromCharCode(parseInt(hex,16)):({t:'\t',r:'\r',n:'\n',f:'\f'}[char] || char));
 }

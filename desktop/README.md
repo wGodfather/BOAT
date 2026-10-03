@@ -1,65 +1,15 @@
-# Nuvio Desktop HLS yardımcısı
+# B.O.A.T Desktop helpers
 
-HDFilmCehennemi FastPlay ve DiziBox King gibi kaynaklar HLS listelerini `.txt` veya uzantısız adreslerde sunabiliyor. Kurulu Nuvio Desktop'ın mpv sürümü bunları AMR-WB ses olarak tanıyabiliyor. FilmModu'nun güncel Pilavyer oynatıcısı da token içeren PHP HLS adresleri kullanıyor.
+These optional shared helpers support BOAT catalogs and HLS playback in Nuvio Desktop. The catalog inventory contains only BOAT.
 
-Yardımcı `127.0.0.1:18765` üzerinde çalışır. Eklenti korumalı ana/alt listeleri Nuvio'nun kendi HTTP çalışma ortamında çeker; yardımcı bunları `.m3u8` ve doğru MIME ile sunar. Türkçe/orijinal sesler, altyazılar ve anahtarlar korunur. Bu VOD yolunda video parçaları yardımcıdan geçmez. Canlı BC Sports için sürüm 4 ayrı bir aktarım yolu ekler. Sürüm 2 ayrıca DominoTV'nin üç sabit GitHub gzip kataloğunu açıp kategori, arama ve içerik detayı olarak sunar. Kurulu Desktop'ın `arrayBuffer()` uyarlaması ikili gzip verisini UTF-8'e çevirerek bozduğu için bu katalog yolu gerekir; diğer çalışma ortamlarında sağlayıcı gzip dosyalarını doğrudan JS ile açar.
-
-## Windows üzerinde başlatma
-
-Sürüm 3, CineJoy için `/transport/cinejoy` ikili POST/yanıt aktarımı ve TMDB katalog/meta için `/transport/tmdb` JSON aktarımı ekler. CineJoy adresleri sabit GitHub domain yapılandırmasıyla sınırlandırılır; oynatıcı yanıtının AES-GCM çözümü sağlayıcının JS kodunda yapılır. TMDB aktarımı yalnız okuma uç noktalarına gider, bu tek API adresini DoH ile çözer ve TLS doğrulamasını korur. Sistemin DNS/hosts ayarları değiştirilmez. Bu yollar dış URL veya kullanıcı oturum başlığı kabul etmez; tarayıcı Origin'i olan istekler reddedilir. CineJoy API'si 502 döndüğünde bu sunucudan kaynak gelmez; bağımsız Movy sunucuları denenmeye devam eder.
-
-Sürüm 4, BC Sports için `/live/register` ve opak oturum adresleriyle canlı aktarım ekler. Canlı listeler uzak sunucudan yenilenir; iki saniyelik kısa önbellek canlı yayını sabit bir listeye dönüştürmez. Bu yolda video parçaları da yardımcıdan geçer: kaynak B’nin RGBTS PNG parçaları MPEG-TS olarak açılır, kaynak D’nin oynatıcı AES anahtar isteği uyarlanır. Kayıt yalnız bilinen kaynak/CDN alan adlarına ve genel HTTPS adreslerine izin verir; yönlendirmelerde de hedef kontrol edilir. Tarayıcı Origin’i olan kayıtlar reddedilir. Canlı oturumlar iki saat kullanılmadığında silinir; en fazla 64 oturum tutulur. C/E/F’nin BeIN Sports 1 listesinin ve video parçasının HTTP 200 kontrolü geçti; A/B/D’nin canlı doğrulaması mevcut sunucu hataları nedeniyle bekliyor.
-
-Sürüm 6, CineStream için gerçek ağ zaman aşımı ve iptal edilebilir süre sayacı ekler. Desktop'ın `fetch()` uyarlaması AbortSignal'i uygulamıyor ve arka plandaki istekleri de bekliyor. CineStream'in bu yoldaki HTML/API/HLS istekleri en fazla 12 saniye, toplam kaynak araması en fazla 50 saniye sürer. Yardımcı yalnız geri döngü adresinde dinler, tarayıcı Origin'i olan istekleri reddeder ve her hedef/yönlendirme için genel IP kontrolü ile DNS sabitlemesi yapar. HTTP yanıtı en fazla 512 KiB'dır. Video dosyaları bu yoldan aktarılmaz. Kaynak seçimleri, sıralama ve kişisel anahtarlar Nuvio'nun yerleşik eklenti ayarlarından okunur; CineStream 1.10.3 ile dağıtım manifestine eklendi.
-
-Node.js gereklidir. Dağıtım deposundaki bu klasörde:
+Start the helper from this directory:
 
 ```powershell
-pwsh -NoProfile -File ./start_desktop_hls.ps1
+.\start_desktop_hls.ps1
 ```
 
-Sürüm 7'nin katalog eklentisi `http://127.0.0.1:18765/addon/manifest.json`
-adresindedir. Bu adres Nuvio'nun eklenti ekleme ekranında normal katalog
-eklentisi olarak eklenir. Yardımcı, dağıtılmış sağlayıcıların kendi JS
-`getCatalog`, `getMeta` ve `getStreams` işlevlerini çalıştırır; kategori
-seçimi, arama, sayfalama ve kaynakların kendi içerik/bölüm kimlikleri korunur.
-Sürüm 8'de Windows katalog yardımcısı Nuvio'nun kaydettiği eklenti ayarlarını
-`%APPDATA%/Nuvio/nuvio_plugins.properties` dosyasından salt okunur biçimde
-yükler. Kaynak seçimleri ve kişisel kitaplık ayarları aynı sağlayıcının
-katalog, metadata ve oynatma çağrılarında kullanılır. Ayar değişince mevcut
-çalışma motoru güncellenir ve önceki ayarlara ait metadata önbelleği yenilenir.
-Bu dosyaya yazılmaz ve içeriği HTTP üzerinden sunulmaz. Ayar okuyucusu
-kişisel anahtarları günlüklere yazmaz.
-Kategoriler sağlayıcı ve içerik türüne göre gruplandırılır, kategori seçimi
-`genre` filtresinde sunulur. Canlı kanallar `live` türünü korur. Cheerio ve
-CryptoJS dağıtıma dahildir; npm kurulumu gerekmez. Mevcut geliştirme envanteri
-44 sağlayıcının 1064 kategorisini tanımlar. Katalog envanterinde eksik sağlayıcı kalmadı.
-FilmModu'nun özgün ve güncel Live kategorileri, HDFilmCehennemi Land'in 30 kategori sorgusu ve AJAX
-sayfalaması, Sinewix'in 11 API kategorisi ve BOAT'ın 15 TMDB sorgusu bağlıdır.
-DiziBox güncel Desktop kontrolünde Reacher 8 bölüm ve VidMoly/King akışlarıyla çalıştı; King 1080p H.264/AAC olarak doğrulandı. Diğer sezonlarda sitenin kaldırılma/üyelik uyarısı korunur.
-Desktop veri ayrıştırıcısı bölüm ve canlı kartları okudu; arayüzün görsel kontrolü henüz yapılmadı.
+Or run `node desktop_hls_bridge.js`. The helper listens on `http://127.0.0.1:18765`; the local catalog addon manifest is available at `http://127.0.0.1:18765/addon/manifest.json`. Shared transport modules and bundled parser/crypto dependencies are retained so the helper can start without additional dependencies.
 
-Kaynak deposundan bu PC'ye kurulum için Nuvio kapalıyken
-`scripts/install_desktop_catalogs.ps1` çalıştırılır. Araç, kurulu uygulamanın
-yerel kayıt API'sini kullanır ve önce `nuvio_addons.properties` yedeğini alır.
-Hesap/depo senkronizasyonunu başlatmaz. Kaynak derlemesi katalog envanterini
-ve taşınabilir runtime dosyasını otomatik üretir.
+Plugin settings are read for the public repository URL:
 
-Alternatif olarak terminal açık kaldığı sürece:
-
-```powershell
-node ./desktop_hls_bridge.js
-```
-
-Sağlık kontrolü: `http://127.0.0.1:18765/health`. Başlatma scripti mevcut yardımcının sürümünü ve kod özetini kontrol eder. Güncelleme gerektiğinde yalnız bu kurulumun başlattığı Node işlemini, Nuvio Desktop kapalıysa yeniden başlatır. Günlükler depo kökünde `tmp/` altında tutulur.
-
-Kaynak deposunda aynı dosyalar `scripts/` altındadır. `scripts/install_desktop_hls.ps1 -AutoStart`, Nuvio kapalıyken dört kurulu eklentiyi günceller ve Windows Başlangıç klasörüne `Nuvio Desktop HLS.lnk` ekler. `-AllRegistered` eklenirse manifest içinde etkin tüm derlenmiş sağlayıcıları önbelleğe yükler ve yeni kayıtları ekler; mevcut sağlayıcıların kullanıcı tarafından seçilmiş açık/kapalı durumu korunur. İşlem öncesinde ayarlar ve önbellek `tmp/desktop-backup-*` altında yedeklenir. Bu kısayol kaynak klasörüne bağlıdır; depo taşınırsa kurulum scriptini yeniden çalıştırın. Otomatik başlatmayı kaldırmak için yalnız bu kısayolu silin.
-
-Yardımcı kapalı olduğunda sağlayıcılar uzak URL'leri döndürür; bu Desktop sürümünde King/FastPlay sorunu tekrar oluşabilir ve DominoTV'nin gzip katalogları açılamaz. Yardımcı yeniden başlatıldıktan veya kaynak tokeni sona erdikten sonra Nuvio'da kaynak listesini yeniden açın. VOD listeleri bellekte en fazla 12 saat/128 oturum tutulur. Servis yalnız loopback'e bağlanır, tarayıcı Origin'iyle liste kaydını ve katalog isteklerini reddeder. Katalog yolu yalnız üç sabit DominoTV GitHub dosyasına erişir; istekten alınan dış URL'leri çekmez.
-
-FilmModu öncelikle güncel `filmmodu.live`/Pilavyer yolunu kullanır. Eski `.one` ayrıştırıcısı geriye uyumluluk için korunur; eski CDN'nin 503 dönen dosyaları eklenti tarafından onarılamaz. Başlık/yıl eşleştirmesi yanlış filmi döndürmeyi engeller; arşivde bulunmayan içerik için kaynak gelmeyebilir.
-
-CineStream’in Simkl hesap girişi kullanıcı isteğiyle ertelendi. Herkese açık
-katalog kartlarında IMDb/TMDB kimlikleri içerik kimliğine taşınır; böylece
-uygulamanın yeni JS çağrısında da hesap gerektirmeyen metadata/akış yolu
-kullanılabilir. Eşleme olmayan Simkl içerikleri için API istemci kimliği gerekir.
+`https://raw.githubusercontent.com/wGodfather/BOAT/main/manifest.json`

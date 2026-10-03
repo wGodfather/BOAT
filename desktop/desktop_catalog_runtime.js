@@ -35,7 +35,7 @@ function createProviderRuntime({providerDir,modulesFile,configFile,fetchImpl=pro
         const module={exports:{}};
         const sandbox={module,exports:module.exports,console,URL,URLSearchParams,TextEncoder,TextDecoder,Uint8Array,ArrayBuffer,DataView,atob,btoa,AbortController,AbortSignal,setTimeout,clearTimeout,setInterval,clearInterval,crypto:webcrypto,
             SCRAPER_SETTINGS:value,
-            fetch:(url,options)=>localConfig && String(url)==='https://raw.githubusercontent.com/dr-octagon/Nuvio/main/config.json'?Promise.resolve(new Response(JSON.stringify(localConfig),{headers:{'Content-Type':'application/json'}})):fetchImpl(url,options),
+            fetch:(url,options)=>localConfig && String(url)==='https://raw.githubusercontent.com/wGodfather/BOAT/main/config.json'?Promise.resolve(new Response(JSON.stringify(localConfig),{headers:{'Content-Type':'application/json'}})):fetchImpl(url,options),
             require:name=>{
                 if(['cheerio','cheerio-without-node-native','react-native-cheerio'].includes(name))return modules.cheerio;
                 if(name==='crypto-js')return modules.CryptoJS;
