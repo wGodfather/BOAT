@@ -20,10 +20,4 @@ https://raw.githubusercontent.com/wGodfather/BOAT/main/manifest.json
 - `desktop/`: shared optional Desktop HLS/catalog helpers, with a BOAT-only catalog inventory.
 - `THIRD_PARTY_NOTICES.md` and `licenses/`: upstream attribution and license texts.
 
-## Development
 
-Private development repository: https://github.com/wGodfather/BOAT-Source
-
-The JavaScript provider originates from https://github.com/dr-octagon/Nuvio. Original author attribution and bundled license information are retained. This copy contains the upstream bundled JavaScript; the unbundled `src/boat/index.js` referenced in its header was not present in the upstream repository.
-
-Development and public distribution repositories are updated separately; automatic publishing is not configured.
