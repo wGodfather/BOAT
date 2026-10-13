@@ -1,3 +1,11 @@
+# B.O.A.T — BOATFLIX / Nuvio
+
+Eklenti deposu adresi:
+
+`https://raw.githubusercontent.com/wGodfather/BOAT/main/manifest.json`
+
+Geliştirme deposu: https://github.com/wGodfather/BOAT-Source.
+Üst proje atıfları ve lisanslar [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) içinde korunur.
 
 
 
