@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "B.O.A.T (Nuvio)",
-  "version": "1.10.9",
+  "version": "1.11.0",
   "description": "B.O.A.T sağlayıcısının Nuvio yapılandırması",
   "branding": {
     "name": "B.O.A.T (Nuvio)",
@@ -44,5 +44,15 @@
         "base": "https://vidlink.pro"
       }
     }
+  },
+  "metadata": {
+    "language": "tr-TR",
+    "personProfiles": true,
+    "seasonPosters": true
+  },
+  "torrent_search": {
+    "parallelProviders": 3,
+    "providerTimeoutMs": 5000,
+    "torrentOnly": true
   }
 }
