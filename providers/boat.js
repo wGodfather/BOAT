@@ -19,17 +19,19 @@ if (typeof globalThis !== 'undefined' && typeof module !== 'undefined' && module
 }
 
 // BOAT_INTERACTIVE_BEGIN
-// B.O.A.T 1.11: live TMDB metadata and incremental, torrent-only search.
+// B.O.A.T 1.12: live TMDB metadata and incremental, torrent-only search.
 // Appended to the attributed upstream bundle by tools/build-provider.cjs.
 (function () {
     const originalMeta = module.exports.getMeta;
     const CONFIG = 'https://raw.githubusercontent.com/wGodfather/BOAT/main/config.json';
+    const PROVIDER_TIMEOUT = 5000;
+    const TURKISH = /turkish|turkce|türkçe|\btr\b|dublaj/i;
     let configuration;
     const metadataRequests = new Map();
     const image = (path, size = 'w500') => typeof path === 'string' && path.startsWith('/')
         ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 
-    async function requestJSON(url, timeout = 5000) {
+    async function requestJSON(url, timeout = PROVIDER_TIMEOUT) {
         const controller = typeof AbortController === 'function' ? new AbortController() : null;
         let timer;
         try {
@@ -47,22 +49,47 @@ if (typeof globalThis !== 'undefined' && typeof module !== 'undefined' && module
         } finally { if (timer) clearTimeout(timer); }
     }
 
+    // TMDB key supplied by the host (BOATFLIX) takes precedence over config.json.
+    function hostKey() {
+        try {
+            const provided = typeof __get_tmdb_api_key === 'function' ? __get_tmdb_api_key() : null;
+            if (typeof provided === 'string' && provided) return provided;
+        } catch (_) { /* host hook failed; fall through to the global */ }
+        const global = globalThis.TMDB_API_KEY;
+        return typeof global === 'string' && global ? global : null;
+    }
+
     async function config() {
-        if (!configuration) configuration = requestJSON(CONFIG).catch(error => {
+        if (!configuration) configuration = requestJSON(CONFIG).then(settings => {
+            // The host's fetch polyfill resolves broken JSON to null instead of rejecting.
+            if (!settings || typeof settings !== 'object') {
+                configuration = null;
+                throw Error('Invalid configuration body');
+            }
+            return settings;
+        }, error => {
             configuration = null;
             throw error;
         });
         return configuration;
     }
 
+    // config.json is optional: it is only consulted when the host provides no TMDB key,
+    // and a failed download never blocks the caller.
+    async function settings() {
+        if (hostKey()) return null;
+        return config().catch(() => null);
+    }
+
     async function tmdb(endpoint, extra = {}) {
-        const settings = await config();
-        const override = typeof __get_tmdb_api_key === 'function' ? __get_tmdb_api_key() : null;
-        const key = override || settings.api_keys?.tmdb;
+        const loaded = await settings();
+        const key = hostKey() || loaded?.api_keys?.tmdb;
         if (!key) throw Error('TMDB configuration unavailable');
-        const query = { api_key: key, language: settings.metadata?.language || 'tr-TR', ...extra };
-        return requestJSON('https://api.themoviedb.org/3/' + endpoint + '?' +
+        const query = { api_key: key, language: loaded?.metadata?.language || 'tr-TR', ...extra };
+        const result = await requestJSON('https://api.themoviedb.org/3/' + endpoint + '?' +
             Object.entries(query).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&'));
+        if (!result || typeof result !== 'object') throw Error('Invalid TMDB response');
+        return result;
     }
 
     function person(p, role) {
@@ -133,6 +160,18 @@ if (typeof globalThis !== 'undefined' && typeof module !== 'undefined' && module
         return { id, series, season: s, episode: e };
     }
 
+    // Resolves the identity once per call and logs a failure once instead of hiding it.
+    function resolve(rawId, mediaType, season, episode) {
+        return context(rawId, mediaType, season, episode).catch(error => {
+            console.warn('BOAT context failed', rawId, error);
+            return null;
+        });
+    }
+
+    function label(stream) {
+        return `${stream.title}${stream.size ? ` [${stream.size}]` : ''}${stream.seeders > 0 ? ` [👤 ${stream.seeders}]` : ''}`;
+    }
+
     function torrent(raw, provider) {
         const hash = raw.infoHash || raw.url?.match(/xt=urn:btih:([^&]+)/i)?.[1];
         if (!/^(?:[a-f\d]{40}|[a-z2-7]{32})$/i.test(hash || '')) return null;
@@ -141,39 +180,89 @@ if (typeof globalThis !== 'undefined' && typeof module !== 'undefined' && module
         const title = (raw.title || raw.name || provider).split('\n')[0];
         const quality = text.match(/\b(2160p|4k|uhd|1440p|1080p|720p|480p)\b/i)?.[1];
         const size = ce(text) || raw.size;
-        const seeders = raw.seeders ?? de(text);
+        const seeders = Number(raw.seeders ?? de(text)) || 0;
         const filename = hints.filename || raw.filename;
-        return { name: `${title}${size ? ` [${size}]` : ''} [👤 ${seeders}]`, title,
+        const stream = { name: '', title,
             url: N(hash, title, raw.sources), infoHash: hash.toLowerCase(), type: 'torrent',
             provider, quality, size, seeders, fileIdx: raw.fileIdx ?? raw.fileIndex, filename,
+            ...(TURKISH.test(title) ? { language: 'tr' } : {}),
             behaviorHints: { ...hints, filename }, };
+        stream.name = label(stream);
+        return stream;
+    }
+
+    // The same torrent reported by a second provider enriches the first record instead of duplicating it.
+    function merge(existing, incoming) {
+        if (!existing.provider.split(', ').includes(incoming.provider)) existing.provider += `, ${incoming.provider}`;
+        if (incoming.seeders > existing.seeders) {
+            existing.seeders = incoming.seeders;
+            existing.name = label(existing);
+        }
+    }
+
+    function withTimeout(promise, ms) {
+        let timer;
+        const expiry = new Promise(resolve => { timer = setTimeout(() => resolve([]), ms); });
+        const clear = () => clearTimeout(timer);
+        return Promise.race([promise, expiry]).then(value => { clear(); return value; }, error => { clear(); throw error; });
+    }
+
+    function sources(loaded) {
+        const urls = loaded?.urls?.boat || {};
+        const base = (value, fallback) => typeof value === 'string' && value.trim() ? value.trim().replace(/\/+$/, '') : fallback;
+        const timeout = Number(loaded?.torrent_search?.providerTimeoutMs);
+        return {
+            timeout: Number.isFinite(timeout) && timeout > 0 ? timeout : PROVIDER_TIMEOUT,
+            providers: [
+                ['Torrentio', base(urls.torrentio, qe)],
+                ['TorrentsDB', base(urls.torrentsdb, Oe)],
+                ['ThePirateBay+', base(urls.tpb, Ne)],
+            ],
+        };
     }
 
     async function getStreams(rawId, mediaType, season, episode) {
-        const selected = await context(rawId, mediaType, season, episode).catch(() => null);
+        const selected = await resolve(rawId, mediaType, season, episode);
         if (!selected) return [];
+        const { timeout, providers } = sources(await settings());
         const path = `${selected.series ? 'series' : 'movie'}/${selected.id}${selected.series ? `:${selected.season}:${selected.episode}` : ''}.json`;
-        const seen = new Set();
-        const all = [];
-        const providers = [['Torrentio', qe], ['TorrentsDB', Oe], ['ThePirateBay+', Ne]];
-        await Promise.allSettled(providers.map(async ([name, base]) => {
-            const result = await requestJSON(`${base}/stream/${path}`);
-            const batch = (result.streams || []).map(raw => torrent(raw, name)).filter(Boolean).filter(stream => {
-                const key = `${stream.infoHash}:${stream.fileIdx ?? ''}:${stream.filename || ''}`;
-                if (seen.has(key)) return false;
-                seen.add(key); return true;
-            });
-            all.push(...batch);
+        const streams = new Map();
+        // OpenSubtitles lookup runs alongside the torrent providers; it never fails or delays the search beyond the provider timeout.
+        let subtitles = [];
+        const subtitleLookup = withTimeout(
+            Promise.resolve().then(() => Ye({ imdbId: selected.id, isSeries: selected.series, season: selected.season, episode: selected.episode })),
+            timeout,
+        ).then(list => { subtitles = Array.isArray(list) ? list : []; }, () => { subtitles = []; });
+        const outcomes = await Promise.allSettled(providers.map(async ([name, base]) => {
+            const result = await requestJSON(`${base}/stream/${path}`, timeout);
+            if (!result || !Array.isArray(result.streams)) throw Error('Invalid provider response');
+            const batch = [];
+            for (const raw of result.streams) {
+                const stream = torrent(raw, name);
+                if (!stream) continue;
+                const key = `${stream.infoHash}:${stream.fileIdx ?? 0}`;
+                const existing = streams.get(key);
+                if (existing) { merge(existing, stream); continue; }
+                stream.subtitles = subtitles;
+                streams.set(key, stream);
+                batch.push(stream);
+            }
             // Optional bridge: old Nuvio versions still receive the complete result array.
             if (batch.length && typeof __emit_streams === 'function') __emit_streams(JSON.stringify(batch));
         }));
+        outcomes.forEach((outcome, index) => {
+            if (outcome.status === 'rejected') console.warn('BOAT provider failed', providers[index][0], outcome.reason);
+        });
+        await subtitleLookup;
+        const all = Array.from(streams.values());
+        all.forEach(stream => { stream.subtitles = subtitles; });
         return Rt(all);
     }
 
     module.exports.getMeta = getMeta;
     module.exports.getStreams = getStreams;
     module.exports.getSubtitles = async (id, type, season, episode) => {
-        const c = await context(id, type, season, episode).catch(() => null);
+        const c = await resolve(id, type, season, episode);
         return c ? Ye({ imdbId: c.id, isSeries: c.series, season: c.season, episode: c.episode }) : [];
     };
     globalThis.getMeta = getMeta;

@@ -1,7 +1,7 @@
 {
   "id": "community.nuvio.boat",
   "name": "B.O.A.T (Nuvio)",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "B.O.A.T: canlı TMDB bilgileri ve paralel torrent araması",
   "author": "Dr.Octagon",
   "logo": "https://raw.githubusercontent.com/wGodfather/BOAT/main/assets/boat.png",
@@ -84,7 +84,7 @@
       "id": "boat",
       "name": "B.O.A.T (Best Of All Time)",
       "description": "Yalnız torrent: Torrentio, TorrentsDB ve ThePirateBay+ paralel arama",
-      "version": "1.11.0",
+      "version": "1.12.0",
       "author": "Dr.Octagon",
       "supportedTypes": [
         "movie",

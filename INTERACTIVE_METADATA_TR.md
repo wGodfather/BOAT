@@ -1,4 +1,16 @@
-# BOAT 1.11.0
+# BOAT 1.12.0
+
+## 1.12.0 degisiklikleri
+
+- Altyazilar: OpenSubtitles sonuclari torrent aramasiyla paralel cekilir ve her kaynaga `subtitles` alani olarak eklenir.
+- TMDB anahtari: once uygulamanin verdigi anahtar (`__get_tmdb_api_key` / `TMDB_API_KEY`) kullanilir; `config.json` yalniz anahtar yoksa ve istege bagli indirilir, bozuk govde onbellege alinmaz.
+- Tekillestirme: `infoHash:fileIdx` anahtari; ayni dosya ikinci saglayicidan gelirse saglayici etiketi birlestirilir ve en yuksek seeder korunur.
+- Turkce/dublaj basliklar `language: 'tr'` ile isaretlenir; seeder bilinmiyorsa `[👤 0]` rozeti eklenmez.
+- Basarisiz saglayicilar ve kimlik cozumleme hatalari `console.warn` ile bir kez raporlanir.
+- `config.json` icindeki `urls.boat.*` ve `torrent_search.providerTimeoutMs` degerleri artik aramada uygulanir.
+- `tools/build-provider.cjs` ust paketin ekte kullanilan 9 tanimlayicisini derlemede dogrular; `tools/interactive.test.cjs` 16 test (8 yeni).
+
+## 1.11.0
 
 BOATFLIX 1.37 ile içerik sayfası canlı TMDB oyuncu ve yönetmen kimliklerini,
 fotoğraflarını, rollerini, başlık logosunu ve sezon kapaklarını kullanır.
